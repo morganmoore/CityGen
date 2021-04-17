@@ -10,11 +10,14 @@ import glob
 def createUI(windowname):
     windowID = 'mainwindow'
     
+    #Create Window
     if cmds.window( windowID, exists=True):
         cmds.deleteUI(windowID)
     cmds.window( windowID, title= windowname , sizeable=True, resizeToFitChildren=False)
     
     cmds.columnLayout( adjustableColumn=True )
+
+    #Create UI Image
     current_project = cmds.workspace(q=True, rootDirectory=True) 
     cmds.image( w =10, h = 120, i= current_project+"images/cityGen")
     cmds.separator(h =10, style = 'none')
@@ -51,13 +54,15 @@ def createUI(windowname):
              
     cmds.separator(h =10, style = 'none')
     
-    #the 'savemenu' fucntion is called
+    #Save button calls the 'savemenu' fucntion 
     cmds.button( label = 'Save', command=functools.partial(savemenu), backgroundColor=[0.1,0.3,0.0])
     cmds.separator(h =10, style = 'none') 
 
-    cmds.button( label = 'Delete', command=functools.partial(delete), backgroundColor=[0.5,0.0,0.0])
+    #Delete Button calls the 'deleteCity' function
+    cmds.button( label = 'Delete', command=functools.partial(deleteCity), backgroundColor=[0.5,0.0,0.0])
     cmds.separator(h =10, style = 'none') 
     
+    #Cancel button c
     cmds.button( label = 'Cancel', command=functools.partial( cancelCallback, windowID) )
     
     cmds.showWindow()
@@ -77,12 +82,6 @@ def savemenu(*pArgs):
     #when the user clicks the save button the path names of the filename and fileformats controls are passed to the 'save' fucntion
     cmds.button( label='save', backgroundColor=[0.1,0.3,0.2], command=functools.partial( save, fileformats, filename))
     cmds.showWindow() 
-
-def delete(*args):
-    if cmds.objExists('City'):
-        cmds.delete('City')
-    else:
-        print("Nothing to delete")
 
 def save(pfileformat, pfilename, *pArgs):
     saveDict = {
@@ -107,11 +106,25 @@ def save(pfileformat, pfilename, *pArgs):
         print("Saved successfully!", workspace+ filename)
     else:
         print("Save unsuccessfull!", workspace+ filename+".*")
-    
-    
+
+def deleteCity(*args):
+    if cmds.objExists('City'):
+        cmds.delete('City')
+    else:
+        print("Nothing to delete")
+
+def cancelCallback(windowID,*pArgs):
+    '''function to close UI window
+       windowID        : The identification name of the window
+    '''   
+    if cmds.window( windowID, exists = True):
+        cmds.deleteUI(windowID)
+
+
 
 class Buildings:
 
+    #static class variables
     mapWidth = 30
     minHeight = 1
     maxHeight = 5
@@ -140,11 +153,10 @@ class Buildings:
         self.totalHeight = 0
         self.bOverlap = False
         
-        #self.create()
         self.createBuilding(buildingList)
         
-        #self.moveBuilding()
-
+     
+    #Primary function to create buildings
     def createBuilding(self, buildingList):
         self.setBuildingPos(buildingList)
         if(not self.bOverlap):
@@ -153,25 +165,27 @@ class Buildings:
             x = self.create()
             self.moveBuilding(x)
 
-    #function creates the actual building, returns void
+    # function to create each building floor by floor
+    # Once built the building group is parented to its corresponding building type group
     def create(self):
         buildIter = rand.randint(0,len(Buildings.buildingTypeList)-1)
         buildnum = Buildings.buildingTypeList[buildIter]
 
+        #get the scale-X of the original building geo
         buildingX = cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[3] - cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[0]
+
+        #make copies of the original model
         floor = cmds.duplicate( "type" +str(buildnum) + "Floor" )
         top = cmds.duplicate("type" +str(buildnum) + "Top")
         cmds.parent( floor, w=True )
         cmds.parent( top, w=True )
         
         tmp = self.width/buildingX
-        #print("Test: ", self.width, buildingX)
         cmds.scale( tmp, tmp, tmp, floor, absolute=True )
         cmds.scale( tmp, tmp, tmp, top, absolute=True )
         buildingY = cmds.xform(floor, q = True, bb = True)[4] - cmds.xform(floor, q = True, bb = True)[1]
 
         tmp2 = int(round(self.height/buildingY))
-        #cmds.group( floor, top, n=str(self.buildingName)+Buildings.buildDict[buildnum])
         cmds.group( floor, top, n=self.buildingName+Buildings.buildDict[buildnum])
         for i in range(tmp2-1):
             new2 = cmds.duplicate( floor )
@@ -251,13 +265,6 @@ class Buildings:
 
 def randrange_float( start, stop, step):
     return rand.randint(0, int((stop - start) / step)) * step + start
-
-def cancelCallback(windowID,*pArgs):
-    '''function to close UI window
-       windowID        : The identification name of the window
-    '''   
-    if cmds.window( windowID, exists = True):
-        cmds.deleteUI(windowID)
 
 def setProgress(prog, numBuildings):
     cmds.progressBar(prog, edit=True, maxValue=numBuildings)
