@@ -161,52 +161,11 @@ class Buildings:
         self.setBuildingPos(buildingList)
         if(not self.bOverlap):
             self.setBuildingHeight()
-            #self.setBuildingWidth()
             x = self.create()
             self.moveBuilding(x)
 
-    # function to create each building floor by floor
-    # Once built the building group is parented to its corresponding building type group
-    def create(self):
-        buildIter = rand.randint(0,len(Buildings.buildingTypeList)-1)
-        buildnum = Buildings.buildingTypeList[buildIter]
-
-        #get the scale-X of the original building geo
-        buildingX = cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[3] - cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[0]
-
-        #make copies of the original model
-        floor = cmds.duplicate( "type" +str(buildnum) + "Floor" )
-        top = cmds.duplicate("type" +str(buildnum) + "Top")
-        cmds.parent( floor, w=True )
-        cmds.parent( top, w=True )
-        
-        tmp = self.width/buildingX
-        cmds.scale( tmp, tmp, tmp, floor, absolute=True )
-        cmds.scale( tmp, tmp, tmp, top, absolute=True )
-        buildingY = cmds.xform(floor, q = True, bb = True)[4] - cmds.xform(floor, q = True, bb = True)[1]
-
-        tmp2 = int(round(self.height/buildingY))
-        cmds.group( floor, top, n=self.buildingName+Buildings.buildDict[buildnum])
-        for i in range(tmp2-1):
-            new2 = cmds.duplicate( floor )
-            if(buildnum==1):
-                r1 = rand.randint(0,1)*90
-                cmds.rotate( 0, str(r1)+'deg', 0, new2)
-            
-            self.totalHeight+=buildingY
-            cmds.move( 0, self.totalHeight, 0 , new2)
-
-        if(not buildnum==3):
-            r2 = rand.randint(0,4)*90
-        else:
-            r2 = rand.randint(0,1)*180
-        cmds.rotate( 0, str(r2)+'deg', 0, top)
-        self.totalHeight+=buildingY
-        cmds.move( 0, self.totalHeight, 0 , top)  
-        tester = cmds.parent(self.buildingName+Buildings.buildDict[buildnum], Buildings.buildDict[buildnum]+"_Buildings")
-
-        return tester
-       
+    #randomly setting building location and checking for overlaps
+    # if there is an overlap, the function recursively tries again for a maximum of 10 recursions
     def setBuildingPos(self, buildingList):
         self.bOverlap = False
         if(Buildings.centreCluster):
@@ -227,7 +186,6 @@ class Buildings:
         
         if(self.bOverlap):
             self.recursionCount+=1
-            #print("Overlap ", self.recursionCount)
             if(self.recursionCount<10):
                 self.setBuildingPos(buildingList)
             else:
@@ -236,8 +194,17 @@ class Buildings:
             self.recursionCount = 0
             self.posX = x 
             self.posY = y
-            #print("fine")
-        
+
+    #if 'centreWidth' checked by user, set height according to buildings distance from centre (0,0)
+    def setBuildingWidth(self, x, y):
+        if(Buildings.centreWidth):
+            distanceFromCentre = math.sqrt(pow(x, 2)+pow(y, 2))
+            tmp = randrange_float(0.8, 1.2, 0.1)
+            self.width =  (((((Buildings.mapWidth/2)-distanceFromCentre)/(Buildings.mapWidth/2))*(Buildings.maxWidth-Buildings.minWidth))+Buildings.minWidth)*tmp
+        else:
+            self.width = randrange_float(Buildings.minWidth, Buildings.maxWidth, 0.1)
+    
+    #if 'centreHeight' checked by user, set height according to buildings distance from centre (0,0)
     def setBuildingHeight(self):
         if(Buildings.centreHeight):
             distanceFromCentre = math.sqrt(pow(self.posX, 2)+pow(self.posY, 2))
@@ -246,16 +213,56 @@ class Buildings:
         else:
             self.height = randrange_float(Buildings.minHeight, Buildings.maxHeight, 0.1)
 
-    def setBuildingWidth(self, x, y):
-        if(Buildings.centreWidth):
-            distanceFromCentre = math.sqrt(pow(x, 2)+pow(y, 2))
-            tmp = randrange_float(0.8, 1.2, 0.1)
-            self.width =  (((((Buildings.mapWidth/2)-distanceFromCentre)/(Buildings.mapWidth/2))*(Buildings.maxWidth-Buildings.minWidth))+Buildings.minWidth)*tmp
-        else:
-            self.width = randrange_float(Buildings.minWidth, Buildings.maxWidth, 0.1)
-        #self.width =  self.randrange_float(Buildings.minWidth, Buildings.maxWidth, 0.1)
+    # function to create each building floor by floor
+    # Once built the building group is parented to its corresponding building type group
+    def create(self):
+        buildIter = rand.randint(0,len(Buildings.buildingTypeList)-1)
+        buildnum = Buildings.buildingTypeList[buildIter]
 
-    #function moves the building, returns void    
+        #get the scale-X of the original building geo
+        buildingX = cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[3] - cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[0]
+
+        #make copies of the original model
+        floor = cmds.duplicate( "type" +str(buildnum) + "Floor" )
+        top = cmds.duplicate("type" +str(buildnum) + "Top")
+        
+        #parent these models to the world (unparent)
+        cmds.parent( floor, w=True )
+        cmds.parent( top, w=True )
+        
+        # scale the models to the calculated width
+        tmp = self.width/buildingX
+        cmds.scale( tmp, tmp, tmp, floor, absolute=True )
+        cmds.scale( tmp, tmp, tmp, top, absolute=True )
+        buildingY = cmds.xform(floor, q = True, bb = True)[4] - cmds.xform(floor, q = True, bb = True)[1]
+
+        #calculate number of floors required to match calculated height
+        tmp2 = int(round(self.height/buildingY))
+        cmds.group( floor, top, n=self.buildingName+Buildings.buildDict[buildnum])
+
+        #create floors
+        for i in range(tmp2-1):
+            new2 = cmds.duplicate( floor )
+            if(buildnum==1):
+                r1 = rand.randint(0,1)*90
+                cmds.rotate( 0, str(r1)+'deg', 0, new2)
+            
+            self.totalHeight+=buildingY
+            cmds.move( 0, self.totalHeight, 0 , new2)
+
+        #position top of building model
+        if(not buildnum==3):
+            r2 = rand.randint(0,4)*90
+        else:
+            r2 = rand.randint(0,1)*180
+        cmds.rotate( 0, str(r2)+'deg', 0, top)
+        self.totalHeight+=buildingY
+        cmds.move( 0, self.totalHeight, 0 , top)  
+        tester = cmds.parent(self.buildingName+Buildings.buildDict[buildnum], Buildings.buildDict[buildnum]+"_Buildings")
+
+        return tester
+       
+    #move building to location  
     def moveBuilding(self, x):
         #print("moved", self.posX, self.posY)
         #cmds.select(x)
