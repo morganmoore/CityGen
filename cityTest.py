@@ -1,3 +1,17 @@
+''' City Generation for Maya Python
+
+    User interface: 
+    -Adjust building min and max width and height
+    -set the number of buildings and the types
+    -set map size and layout characteristics
+    -Save results to required file format
+    Main loop:
+    Access data from UI
+    Set 'Buildings' class variables
+    Loop for number of buildings and create a new class instance for each
+    Group resulting geometry
+
+'''
 import maya.cmds as cmds
 import math as math
 import functools
@@ -63,7 +77,7 @@ def createUI(windowname):
     cmds.separator(h =10, style = 'none') 
     
     #Cancel button c
-    cmds.button( label = 'Cancel', command=functools.partial( cancelCallback, windowID) )
+    cmds.button( label = 'Cancel', command=functools.partial( closeWindow, windowID) )
     
     cmds.showWindow()
     cmds.window(windowID, e=True, width=640)   
@@ -96,12 +110,12 @@ def save(pfileformat, pfilename, *pArgs):
     workspace = cmds.workspace( q=True, dir=True )
 
     cmds.file(rename=workspace+ filename)
-    if(saveDict[fileformat] != "OBJexport"):
-        saved = cmds.file(save=True, type=saveDict[fileformat])
-    else:
-        cmds.select('City')
-        cmds.file( exportSelected= True, type = "OBJexport")
+
+    #save file with selected format
+    saved = cmds.file(save=True, type=saveDict[fileformat])
     
+    
+    # check if file exists
     if glob.glob(workspace+ filename+".*"):
         print("Saved successfully!", workspace+ filename)
     else:
@@ -113,7 +127,7 @@ def deleteCity(*args):
     else:
         print("Nothing to delete")
 
-def cancelCallback(windowID,*pArgs):
+def closeWindow(windowID,*args):
     '''function to close UI window
        windowID        : The identification name of the window
     '''   
@@ -121,7 +135,7 @@ def cancelCallback(windowID,*pArgs):
         cmds.deleteUI(windowID)
 
 
-
+#Class to position and create Building types
 class Buildings:
 
     #static class variables
@@ -168,16 +182,19 @@ class Buildings:
     # if there is an overlap, the function recursively tries again for a maximum of 10 recursions
     def setBuildingPos(self, buildingList):
         self.bOverlap = False
+        #bias towards centre of map in generated position
         if(Buildings.centreCluster):
             tmp = pow(randrange_float(0,1,0.01), 0.5)
             x = -Buildings.mapWidth/2+(Buildings.mapWidth) * pow(randrange_float(0,1,0.01), 1.5) 
             y = -Buildings.mapWidth/2+(Buildings.mapWidth) * pow(randrange_float(0,1,0.01), 1.5)
+        #no bias in generated position 
         else:
             x = self.randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
             y = self.randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
         
         self.setBuildingWidth(x,y)
         
+        #check for overlap
         for j in range(len(buildingList)):
             
             if(abs(buildingList[j].posX-x)<(buildingList[j].width+self.width+Buildings.minGapWidth)/2 and abs(buildingList[j].posY-y)<(buildingList[j].width+self.width+Buildings.minGapWidth)/2):
@@ -269,16 +286,16 @@ class Buildings:
         cmds.move(self.posX, 0, self.posY, x)
         #cmds.select( cl = True)
 
-
+#get random float between two values
 def randrange_float( start, stop, step):
     return rand.randint(0, int((stop - start) / step)) * step + start
 
+# initialise/reset the progress bar
 def setProgress(prog, numBuildings):
     cmds.progressBar(prog, edit=True, maxValue=numBuildings)
     cmds.progressBar(prog, edit=True, progress=0)
 
 # Programs primary function
-# 
 def cityGen(numberBuildings, mapWidth, buildingMinWidth, buildingMaxWidth, buildingMinheight, buildingMaxheight, minGapWidth, centreHeight,centreWidth, buildTypes,centreCluster,progress,  *args): 
     
     cmds.group( em = True, n = "City")
@@ -301,15 +318,18 @@ def cityGen(numberBuildings, mapWidth, buildingMinWidth, buildingMaxWidth, build
     # initialise/reset the progress bar
     setProgress(progress, numBuildings)
     
+    #set the type of buildings selected in the Buildings class and create groups for each type parented under the main 'City' group
     for i in range(len(tmpList)):
         if(tmpList[i]):
             Buildings.buildingTypeList.append(i+1)
             tmp = cmds.group( em=True, name=Buildings.buildDict[i+1]+"_Buildings")
             cmds.parent(tmp, "City")
 
+    #create ground plane
     cmds.polyPlane( w=Buildings.mapWidth+Buildings.maxWidth, h=Buildings.mapWidth+Buildings.maxWidth  , n = "Ground")
     cmds.parent("Ground", "City")
 
+    #create all the buildings 
     for i in range(numBuildings):
         cmds.progressBar(progress, edit=True, step=1)
         building = Buildings(i+1,buildingList)
