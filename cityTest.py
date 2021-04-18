@@ -24,14 +24,14 @@ import glob
 def createUI(windowname):
     windowID = 'mainwindow'
     
-    #Create Window
+    # Create Window
     if cmds.window( windowID, exists=True):
         cmds.deleteUI(windowID)
     cmds.window( windowID, title= windowname , sizeable=True, resizeToFitChildren=False)
     
     cmds.columnLayout( adjustableColumn=True )
 
-    #Create UI Image
+    # Create UI Image
     current_project = cmds.workspace(q=True, rootDirectory=True) 
     cmds.image( w =10, h = 120, i= current_project+"images/cityGen")
     cmds.separator(h =10, style = 'none')
@@ -39,11 +39,11 @@ def createUI(windowname):
     cmds.text( label ='City Gen:',align='left', font = 'boldLabelFont')
     cmds.separator(h =5, style = 'none')
 
-    #Building Types checkbox
+    # Building Types checkbox
     buildTypes = cmds.checkBoxGrp( numberOfCheckBoxes=4, label='Building Types', columnAlign=[1,'left'], labelArray4=['Square', 'Pointy', 'Hexagon', 'Square2'], valueArray4 = [True,True,True,True] )
     cmds.separator(h =10, style = 'none')
 
-    #All slider controls
+    # All slider controls
     numberBuildings = cmds.intSliderGrp(label='Number of Buildings:', minValue=1, maxValue=200, value=150, step=1, field=True, columnAlign=[1,'left'])
     mapWidth = cmds.floatSliderGrp(label='Map width:', minValue=20, maxValue=100, value=40, step=1, field=True, columnAlign=[1,'left'])
     minHeight = cmds.floatSliderGrp(label='Height min:', minValue=1, maxValue=5, value=3, step=0.1, field=True, columnAlign=[1,'left'])
@@ -54,7 +54,7 @@ def createUI(windowname):
     cmds.scriptJob( listJobs=True )
     cmds.separator(h =10, style = 'none')
     
-    #control to enable or disable apples on the tree
+    # control to enable or disable apples on the tree
     centreHeight = cmds.checkBoxGrp( numberOfCheckBoxes=1, label='Centre Height:  ',columnAlign=[1,'left'],  value1 =True  )
     centreWidth = cmds.checkBoxGrp( numberOfCheckBoxes=1, label='Centre Width:  ',columnAlign=[1,'left'],  value1 =True  )
     centreCluster = cmds.checkBoxGrp( numberOfCheckBoxes=1, label='Centre Cluster:  ',columnAlign=[1,'left'],  value1 =True  )
@@ -63,20 +63,20 @@ def createUI(windowname):
     
     cmds.separator(h =10, style = 'none')
     
-    #when the apply button is pressed, the path names of the various controls are passed to the cityGen function
+    # when the apply button is pressed, the path names of the various controls are passed to the cityGen function
     cmds.button( label='Apply', backgroundColor=[0.9,0.9,0.9], command=functools.partial( cityGen, numberBuildings, mapWidth, minWidth, maxWidth, minHeight, maxHeight, minGapWidth, centreHeight,centreWidth, buildTypes, centreCluster, progressControl) )
              
     cmds.separator(h =10, style = 'none')
     
-    #Save button calls the 'savemenu' fucntion 
+    # Save button calls the 'savemenu' fucntion 
     cmds.button( label = 'Save', command=functools.partial(savemenu), backgroundColor=[0.1,0.3,0.0])
     cmds.separator(h =10, style = 'none') 
 
-    #Delete Button calls the 'deleteCity' function
+    # Delete Button calls the 'deleteCity' function
     cmds.button( label = 'Delete', command=functools.partial(deleteCity), backgroundColor=[0.5,0.0,0.0])
     cmds.separator(h =10, style = 'none') 
     
-    #Cancel button c
+    # Cancel button c
     cmds.button( label = 'Cancel', command=functools.partial( closeWindow, windowID) )
     
     cmds.showWindow()
@@ -93,7 +93,7 @@ def savemenu(*pArgs):
     filename = cmds.textField( width=1, text='Filename?')
     fileformats = cmds.radioButtonGrp( numberOfRadioButtons=3, label='File Format:  ', labelArray3=['MayaAscii', 'OBJ', 'MayaBinary'], select = 1)
     
-    #when the user clicks the save button the path names of the filename and fileformats controls are passed to the 'save' fucntion
+    # when the user clicks the save button the path names of the filename and fileformats controls are passed to the 'save' fucntion
     cmds.button( label='save', backgroundColor=[0.1,0.3,0.2], command=functools.partial( save, fileformats, filename))
     cmds.showWindow() 
 
@@ -111,7 +111,7 @@ def save(pfileformat, pfilename, *pArgs):
 
     cmds.file(rename=workspace+ filename)
 
-    #save file with selected format
+    # save file with selected format
     saved = cmds.file(save=True, type=saveDict[fileformat])
     
     
@@ -134,11 +134,53 @@ def closeWindow(windowID,*args):
     if cmds.window( windowID, exists = True):
         cmds.deleteUI(windowID)
 
+# Programs primary function
+def cityGen(numberBuildings, mapWidth, buildingMinWidth, buildingMaxWidth, buildingMinheight, buildingMaxheight, minGapWidth, centreHeight,centreWidth, buildTypes,centreCluster,progress,  *args): 
+    
+    #This group will hold all the created Buildings
+    cmds.group( em = True, n = "City")
+    
+    #list to hold 'Buildings' class instances
+    buildingList = []
 
-#Class to position and create Building types
+    # Query UI data and Set Building Class variables
+    numBuildings = cmds.intSliderGrp(numberBuildings, query=True, value=True)
+    Buildings.mapWidth = cmds.floatSliderGrp(mapWidth, query=True, value=True)
+    Buildings.minWidth = cmds.floatSliderGrp(buildingMinWidth, query=True, value=True)
+    Buildings.maxWidth = cmds.floatSliderGrp(buildingMaxWidth, query=True, value=True)
+    Buildings.minHeight = cmds.floatSliderGrp(buildingMinheight, query=True, value=True)
+    Buildings.maxHeight = cmds.floatSliderGrp(buildingMaxheight, query=True, value=True)
+    Buildings.minGapWidth = cmds.floatSliderGrp(minGapWidth, query=True, value=True)
+    Buildings.centreHeight = cmds.checkBoxGrp(centreHeight, query=True, value1=True)
+    Buildings.centreWidth = cmds.checkBoxGrp(centreWidth, query=True, value1=True)
+    Buildings.centreCluster = cmds.checkBoxGrp(centreCluster, query=True, value1=True)
+    tmpList = cmds.checkBoxGrp(buildTypes, query=True, valueArray4=True)
+
+    # initialise/reset the progress bar
+    setProgress(progress, numBuildings)
+    
+    # set the type of buildings selected in the Buildings class and create groups for each type parented under the main 'City' group
+    for i in range(len(tmpList)):
+        if(tmpList[i]):
+            Buildings.buildingTypeList.append(i+1)
+            tmp = cmds.group( em=True, name=Buildings.buildDict[i+1]+"_Buildings")
+            cmds.parent(tmp, "City")
+
+    # create ground plane
+    cmds.polyPlane( w=Buildings.mapWidth+Buildings.maxWidth, h=Buildings.mapWidth+Buildings.maxWidth  , n = "Ground")
+    cmds.parent("Ground", "City")
+
+    # create all the buildings 
+    for i in range(numBuildings):
+        cmds.progressBar(progress, edit=True, step=1)
+        building = Buildings(i+1,buildingList)
+        buildingList.append(building)
+
+
+# Class to position and create Building types
 class Buildings:
 
-    #static class variables
+    # static class variables
     mapWidth = 30
     minHeight = 1
     maxHeight = 5
@@ -157,7 +199,7 @@ class Buildings:
     4: "Square2"
     }
     
-    #class constructor    
+    # class constructor    
     def __init__(self, count, buildingList):
         self.recursionCount = 0
         self.buildingName = "Building_" + str(count) + "_"
@@ -170,7 +212,7 @@ class Buildings:
         self.createBuilding(buildingList)
         
      
-    #Primary function to create buildings
+    # Primary function to create buildings
     def createBuilding(self, buildingList):
         self.setBuildingPos(buildingList)
         if(not self.bOverlap):
@@ -178,23 +220,23 @@ class Buildings:
             x = self.create()
             self.moveBuilding(x)
 
-    #randomly setting building location and checking for overlaps
+    # randomly setting building location and checking for overlaps
     # if there is an overlap, the function recursively tries again for a maximum of 10 recursions
     def setBuildingPos(self, buildingList):
         self.bOverlap = False
-        #bias towards centre of map in generated position
+        # bias towards centre of map in generated position
         if(Buildings.centreCluster):
             tmp = pow(randrange_float(0,1,0.01), 0.5)
             x = -Buildings.mapWidth/2+(Buildings.mapWidth) * pow(randrange_float(0,1,0.01), 1.5) 
             y = -Buildings.mapWidth/2+(Buildings.mapWidth) * pow(randrange_float(0,1,0.01), 1.5)
-        #no bias in generated position 
+        # no bias in generated position 
         else:
             x = self.randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
             y = self.randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
         
         self.setBuildingWidth(x,y)
         
-        #check for overlap
+        # check for overlap
         for j in range(len(buildingList)):
             
             if(abs(buildingList[j].posX-x)<(buildingList[j].width+self.width+Buildings.minGapWidth)/2 and abs(buildingList[j].posY-y)<(buildingList[j].width+self.width+Buildings.minGapWidth)/2):
@@ -212,7 +254,7 @@ class Buildings:
             self.posX = x 
             self.posY = y
 
-    #if 'centreWidth' checked by user, set height according to buildings distance from centre (0,0)
+    # if 'centreWidth' checked by user, set height according to buildings distance from centre (0,0)
     def setBuildingWidth(self, x, y):
         if(Buildings.centreWidth):
             distanceFromCentre = math.sqrt(pow(x, 2)+pow(y, 2))
@@ -221,7 +263,7 @@ class Buildings:
         else:
             self.width = randrange_float(Buildings.minWidth, Buildings.maxWidth, 0.1)
     
-    #if 'centreHeight' checked by user, set height according to buildings distance from centre (0,0)
+    # if 'centreHeight' checked by user, set height according to buildings distance from centre (0,0)
     def setBuildingHeight(self):
         if(Buildings.centreHeight):
             distanceFromCentre = math.sqrt(pow(self.posX, 2)+pow(self.posY, 2))
@@ -279,14 +321,11 @@ class Buildings:
 
         return tester
        
-    #move building to location  
+    # move building to location  
     def moveBuilding(self, x):
-        #print("moved", self.posX, self.posY)
-        #cmds.select(x)
         cmds.move(self.posX, 0, self.posY, x)
-        #cmds.select( cl = True)
 
-#get random float between two values
+# get random float between two values
 def randrange_float( start, stop, step):
     return rand.randint(0, int((stop - start) / step)) * step + start
 
@@ -295,48 +334,6 @@ def setProgress(prog, numBuildings):
     cmds.progressBar(prog, edit=True, maxValue=numBuildings)
     cmds.progressBar(prog, edit=True, progress=0)
 
-# Programs primary function
-def cityGen(numberBuildings, mapWidth, buildingMinWidth, buildingMaxWidth, buildingMinheight, buildingMaxheight, minGapWidth, centreHeight,centreWidth, buildTypes,centreCluster,progress,  *args): 
-    
-    cmds.group( em = True, n = "City")
-    
-    buildingList = []
-    numBuildings = cmds.intSliderGrp(numberBuildings, query=True, value=True)
-
-    #Setting Building Class variab;es
-    Buildings.mapWidth = cmds.floatSliderGrp(mapWidth, query=True, value=True)
-    Buildings.minWidth = cmds.floatSliderGrp(buildingMinWidth, query=True, value=True)
-    Buildings.maxWidth = cmds.floatSliderGrp(buildingMaxWidth, query=True, value=True)
-    Buildings.minHeight = cmds.floatSliderGrp(buildingMinheight, query=True, value=True)
-    Buildings.maxHeight = cmds.floatSliderGrp(buildingMaxheight, query=True, value=True)
-    Buildings.minGapWidth = cmds.floatSliderGrp(minGapWidth, query=True, value=True)
-    Buildings.centreHeight = cmds.checkBoxGrp(centreHeight, query=True, value1=True)
-    Buildings.centreWidth = cmds.checkBoxGrp(centreWidth, query=True, value1=True)
-    Buildings.centreCluster = cmds.checkBoxGrp(centreCluster, query=True, value1=True)
-    tmpList = cmds.checkBoxGrp(buildTypes, query=True, valueArray4=True)
-
-    # initialise/reset the progress bar
-    setProgress(progress, numBuildings)
-    
-    #set the type of buildings selected in the Buildings class and create groups for each type parented under the main 'City' group
-    for i in range(len(tmpList)):
-        if(tmpList[i]):
-            Buildings.buildingTypeList.append(i+1)
-            tmp = cmds.group( em=True, name=Buildings.buildDict[i+1]+"_Buildings")
-            cmds.parent(tmp, "City")
-
-    #create ground plane
-    cmds.polyPlane( w=Buildings.mapWidth+Buildings.maxWidth, h=Buildings.mapWidth+Buildings.maxWidth  , n = "Ground")
-    cmds.parent("Ground", "City")
-
-    #create all the buildings 
-    for i in range(numBuildings):
-        cmds.progressBar(progress, edit=True, step=1)
-        building = Buildings(i+1,buildingList)
-        buildingList.append(building)
-
-    
-
-#Enter program and call create UI
+# Enter program and call create UI
 if __name__ == "__main__":
     createUI('CityGen')
