@@ -158,6 +158,9 @@ def cityGen(numberBuildings, mapWidth, buildingMinWidth, buildingMaxWidth, build
 
     # initialise/reset the progress bar
     setProgress(progress, numBuildings)
+
+    #reset building types
+    Buildings.buildingTypeList = []
     
     # set the type of buildings selected in the Buildings class and create groups for each type parented under the main 'City' group
     for i in range(len(tmpList)):
@@ -231,8 +234,8 @@ class Buildings:
             y = -Buildings.mapWidth/2+(Buildings.mapWidth) * pow(randrange_float(0,1,0.01), 1.5)
         # no bias in generated position 
         else:
-            x = self.randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
-            y = self.randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
+            x = randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
+            y = randrange_float(-Buildings.mapWidth/2, Buildings.mapWidth/2, 0.01)
         
         self.setBuildingWidth(x,y)
         
@@ -270,13 +273,14 @@ class Buildings:
             tmp = randrange_float(0.8, 1.2, 0.1)
             self.height =  (((((Buildings.mapWidth/2)-distanceFromCentre)/(Buildings.mapWidth/2))*(Buildings.maxHeight-Buildings.minHeight))+Buildings.minHeight)*tmp
         else:
-            self.height = randrange_float(Buildings.minHeight, Buildings.maxHeight, 0.1)
+            self.height = randrange_float(Buildings.minHeight, Buildings.maxHeight, 0.1) 
 
     # function to create each building floor by floor
     # Once built the building group is parented to its corresponding building type group
     def create(self):
         buildIter = rand.randint(0,len(Buildings.buildingTypeList)-1)
         buildnum = Buildings.buildingTypeList[buildIter]
+        print("TYPE: ", Buildings.buildingTypeList)
 
         #get the scale-X of the original building geo
         buildingX = cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[3] - cmds.xform("type" +str(buildnum) + "Floor", q = True, bb = True)[0]
